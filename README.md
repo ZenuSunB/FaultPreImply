@@ -1,0 +1,1 @@
+python ./src/prepare_dataset.py --exp_id train --aig_folder ./data_raw/test # Use the default settings 
