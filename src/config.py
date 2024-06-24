@@ -102,7 +102,7 @@ def get_parse_args():
                         help='drop learning rate by 10.')
     parser.add_argument('--weight_decay', type=float, default=1e-10, 
                         help='weight decay (default: 1e-10)')
-    parser.add_argument('--num_epochs', type=int, default=1,
+    parser.add_argument('--num_epochs', type=int, default=20,
                         help='total training epochs.')
     parser.add_argument('--num_iters', type=int, default=-1,
                         help='default: #samples / batch_size.')
@@ -110,7 +110,7 @@ def get_parse_args():
                         help='batch size')
     parser.add_argument('--grad_clip', type=float, default=0.,
                         help='gradiant clipping')
-    parser.add_argument('--trainval_split', default=0.5, type=float,
+    parser.add_argument('--trainval_split', default=0.80, type=float,
                         help='the splitting setting for training dataset and validation dataset.')
     parser.add_argument('--val_only', action='store_true', 
                         help='Do the validation evaluation only.')

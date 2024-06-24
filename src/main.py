@@ -78,7 +78,7 @@ def main(args):
     val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset,
                                                                     num_replicas=args.world_size,
                                                                     rank=args.rank)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False,
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, drop_last=True,
                             num_workers=args.num_workers, sampler=train_sampler)    
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
                             sampler=val_sampler)

@@ -150,7 +150,17 @@ def get_function_acc(g, node_emb):
         acc = correct * 1.0 / total
         return acc
     return -1
-            
+def get_Redundant_class_acc(has_redundant_fault, has_redundant_fault_pre):
+    has_redundant_fault_pre = [1 if x > 0.5 else 0 for x in has_redundant_fault_pre]
+    TP = sum((x==1 and y==1)  for x, y in zip(has_redundant_fault, has_redundant_fault_pre))
+    TN = sum((x==0 and y==1)  for x, y in zip(has_redundant_fault, has_redundant_fault_pre))
+    FP = sum((x==1 and y==0)  for x, y in zip(has_redundant_fault, has_redundant_fault_pre))
+    FN = sum((x==0 and y==0)  for x, y in zip(has_redundant_fault, has_redundant_fault_pre))
+    precision = float(TP) /(float(TP) + float(FP))
+    recall = float(TP) /(float(TP) + float(FN))
+    print("\n")
+    print(TP,TN,FP,FN)
+    return precision,recall
 def generate_orthogonal_vectors(n, dim):
     # Generate an initial random vector
     v0 = np.random.randn(dim)

@@ -8,7 +8,7 @@ import torch.nn as nn
 import numpy as np
 from torch_geometric.nn import DataParallel
 from progress.bar import Bar
-from utils.utils import AverageMeter, zero_normalization, get_function_acc
+from utils.utils import AverageMeter, zero_normalization, get_function_acc, get_Redundant_class_acc
 
 _loss_factory = {
     # Regression
@@ -38,25 +38,25 @@ class ModelWithLoss(torch.nn.Module):
         prob_loss = self.reg_loss(prob.to(self.device), batch.prob.to(self.device))
         #------------------------------Task 1: Probability Prediction endin------------------------------
         
-        #------------------------------Task 2: Structural Prediction begin------------------------------
+        #------------------------------Task 2: Structural Prediction begin-------------------------------
         rc_loss = self.cls_loss(is_rc.to(self.device), batch.is_rc.to(self.device)) 
-        #------------------------------Task 2: Structural Prediction endin------------------------------
+        #------------------------------Task 2: Structural Prediction endin-------------------------------
         
-        #------------------------------Task 3: Function Prediction begin------------------------------
+        #------------------------------Task 3: Function Prediction begin---------------------------------
         node_a = hf[batch.tt_pair_index[0]]
         node_b = hf[batch.tt_pair_index[1]]
         emb_dis = 1 - torch.cosine_similarity(node_a, node_b, eps=1e-8)
         emb_dis_z = zero_normalization(emb_dis)
         tt_dis_z = zero_normalization(batch.tt_dis)
         func_loss = self.reg_loss(emb_dis_z.to(self.device), tt_dis_z.to(self.device))
-        # ------------------------------Task 3: Function Prediction endin------------------------------  
+        #------------------------------Task 3: Function Prediction endin----------------------------------
         
-        #------------------------------Task 4: Redundant Fault Prediction begin------------------------------
+        #------------------------------Task 4: Redundant Fault Prediction begin---------------------------
         redundant_loss = self.reg_loss(has_redundant_fault.to(self.device), batch.has_redundant_fault.to(self.device))
-        #------------------------------Task 4: Redundant Fault Prediction endin------------------------------  
+        #------------------------------Task 4: Redundant Fault Prediction endin---------------------------
         
-        loss_stats = {'LProb': prob_loss, 'LRC': rc_loss, 'LFunc': func_loss, "RFault": redundant_loss}
-        return hs, hf, loss_stats
+        loss_stats = {'LProb': prob_loss, 'LRC': rc_loss, 'LFunc': func_loss, "LRFault": redundant_loss}
+        return hs, hf, has_redundant_fault, loss_stats
 
 class MLPGNNTrainer(object):
     def __init__(self, args, model, optimizer=None):
@@ -100,12 +100,13 @@ class MLPGNNTrainer(object):
         #--------------------------- init
         args = self.args
         results = {}
-        acc_list = []
+        acc_func_list = []
+        acc_redundant_list = []
         data_time, batch_time = AverageMeter(), AverageMeter()
         avg_loss_stats = {l: AverageMeter() for l in self.loss_stats}
         num_iters = len(dataset) if args.num_iters < 0 else args.num_iters
         if local_rank == 0:
-            bar = Bar('{}/{}'.format(args.task, args.exp_id), max=num_iters)
+            bar = Bar('\033[1;31;42m{}/{}'.format(args.task, args.exp_id), max=num_iters)
         end = time.time()
         #--------------------------- iter
         for iter_id, batch in enumerate(dataset):
@@ -116,11 +117,11 @@ class MLPGNNTrainer(object):
                 
             data_time.update(time.time() - end)
             #--------------------------- loss calculate
-            hs, hf, loss_stats = model_with_loss(batch)
+            hs, hf, has_redundant_fault_pre, loss_stats = model_with_loss(batch)
             loss =  loss_stats['LProb'] * args.Prob_weight + \
                     loss_stats['LRC'] * args.RC_weight + \
                     loss_stats['LFunc'] * args.Func_weight + \
-                    loss_stats['RFault'] * args.Redundant_weight
+                    loss_stats['LRFault'] * args.Redundant_weight
             loss /= (args.Prob_weight + args.RC_weight + args.Func_weight + args.Redundant_weight)
             loss = loss.mean()
             loss_stats['loss'] = loss 
@@ -134,7 +135,6 @@ class MLPGNNTrainer(object):
             #--------------------------- log print
             batch_time.update(time.time() - end)
             end = time.time()
-            
             if local_rank == 0:
                 Bar.suffix = '{phase}: [{0}][{1}/{2}]|Tot: {total:} |ETA: {eta:} '.format(
                     epoch, iter_id, num_iters, phase=phase,
@@ -145,18 +145,21 @@ class MLPGNNTrainer(object):
                     Bar.suffix = Bar.suffix + \
                         '|{} {:.4f} '.format(l, avg_loss_stats[l].avg)
                 
-                # Get Acc
-                if phase == 'val':
-                    acc = get_function_acc(batch, hf)
-                    Bar.suffix = Bar.suffix + '|Acc {:}%%'.format(acc*100)
-                    acc_list.append(acc)
-
                 if not args.hide_data_time:
                     Bar.suffix = Bar.suffix + '|Data {dt.val:.3f}s({dt.avg:.3f}s) ' \
-                        '|Net {bt.avg:.3f}s'.format(dt=data_time, bt=batch_time)
+                        '|Net {bt.avg:.3f}s\033[0m'.format(dt=data_time, bt=batch_time)
+                # Get Acc
+                if phase == '  val':
+                    acc_func = get_function_acc(batch, hf)
+                    precision,recall = get_Redundant_class_acc(batch.has_redundant_fault, has_redundant_fault_pre)
+                    Bar.suffix = Bar.suffix + '\033[1;31;42m |Acc_func {:}%%\033[0m'.format(acc_func*100)
+                    Bar.suffix = Bar.suffix + '\033[1;31;42m |Precision_redundant {:}%%\033[0m'.format(precision*100)
+                    Bar.suffix = Bar.suffix + '\033[1;31;42m |Recall_redundant {:}%%\033[0m'.format(recall*100)
+                    acc_func_list.append(acc_func)
+                    acc_redundant_list.append([precision,recall])
                 if args.print_iter > 0:
                     if iter_id % args.print_iter == 0:
-                        print('{}/{}| {}'.format(args.task, args.exp_id, Bar.suffix))
+                        print('{}/{}| {}\033[0m'.format(args.task, args.exp_id, Bar.suffix))
                 else:
                     bar.next()
                     
@@ -167,8 +170,8 @@ class MLPGNNTrainer(object):
         if local_rank == 0:
             bar.finish()
             ret['time'] = bar.elapsed_td.total_seconds() / 60.
-            if phase == 'val':
-                ret['ACC'] = np.average(acc_list)
+            if phase == '  val':
+                ret['ACC'] = np.average(acc_func)
         return ret, results
 
     def debug(self, batch, output, iter_id):
@@ -182,11 +185,11 @@ class MLPGNNTrainer(object):
             reg_loss_func = _loss_factory[reg_loss]()
         if cls_loss in _loss_factory.keys():
             cls_loss_func = _loss_factory[cls_loss]()
-        loss_states = ['loss', 'LProb', 'LRC', 'LFunc', 'RFault']
+        loss_states = ['loss', 'LProb', 'LRC', 'LFunc', 'LRFault']
         return loss_states, reg_loss_func, cls_loss_func
 
     def val(self, epoch, data_loader, local_rank):
-        return self.run_epoch('val', epoch, data_loader, local_rank)
+        return self.run_epoch('  val', epoch, data_loader, local_rank)
 
     def train(self, epoch, data_loader, local_rank):
         return self.run_epoch('train', epoch, data_loader, local_rank)

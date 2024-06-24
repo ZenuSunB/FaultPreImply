@@ -297,6 +297,7 @@ def add_node_index(data):
 def new_node(name2idx, x_data, node_name, gate_type):
     x_data.append([node_name, gate_type])
     name2idx[node_name] = len(name2idx)
+    
 
 def feature_generation(data, gate_to_index):
     '''
@@ -323,6 +324,7 @@ def feature_generation(data, gate_to_index):
     for line in data:
         if 'INPUT(' in line:
             node_name = line.split("(")[-1].split(')')[0]
+            node_name = node_name.replace(' ','')
             new_node(name2idx, x_data, node_name, get_gate_type('INPUT', gate_to_index))
         elif 'AND(' in line or 'NAND(' in line or 'OR(' in line or 'NOR(' in line \
                 or 'NOT(' in line or 'XOR(' in line:
@@ -977,13 +979,13 @@ def feature_gen_connect(data, gate_to_index):
     for line in data:
         if 'INPUT(' in line:
             node_name = line.split("(")[-1].split(')')[0]
+            node_name = node_name.replace(' ','')            
             new_node(name2idx, x_data, node_name, get_gate_type('INPUT', gate_to_index))
         elif 'AND(' in line or 'NAND(' in line or 'OR(' in line or 'NOR(' in line \
                 or 'NOT(' in line or 'XOR(' in line or 'BUF(' in line:
             node_name = line.split(':')[-1].split('=')[0].replace(' ', '')
             gate_type = line.split('=')[-1].split('(')[0].replace(' ', '')
             new_node(name2idx, x_data, node_name, get_gate_type(gate_type, gate_to_index))
-
     for line_idx, line in enumerate(data):
         if 'AND(' in line or 'NAND(' in line or 'OR(' in line or 'NOR(' in line \
                 or 'NOT(' in line or 'XOR(' in line or 'BUF(' in line:
@@ -1049,6 +1051,15 @@ def parse_bench(file, gate_to_index={'INPUT': 0, 'AND': 1, 'NOT': 2}, MAX_LENGTH
     
     return data, edge_data, fanin_list, fanout_list, level_list
 
+def parse_bench_with_old_name(file, gate_to_index={'INPUT': 0, 'AND': 1, 'NOT': 2}, MAX_LENGTH=-1):
+    data = read_file(file)
+    data, num_nodes, _ = add_node_index(data)
+    if MAX_LENGTH > 0 and num_nodes > MAX_LENGTH:
+        return [], [], [], [], []
+    data, edge_data = feature_gen_connect(data, gate_to_index)
+    fanin_list, fanout_list = get_fanin_fanout(data, edge_data)
+    data, level_list = feature_gen_level(data, fanout_list)
+    return data, edge_data, fanin_list, fanout_list, level_list
 
 def simulator_truth_table(x_data, PI_indexes, level_list, fanin_list, gate_to_index):
     no_of_patterns = int(pow(2, len(PI_indexes)))
