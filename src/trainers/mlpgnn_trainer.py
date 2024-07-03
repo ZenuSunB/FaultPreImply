@@ -29,7 +29,9 @@ class ModelWithLoss(torch.nn.Module):
         self.gpus = gpus
         self.device = device
         self.sigmoid = nn.Sigmoid()
-
+        self.zero = torch.zeros(1).to(self.device)
+        self.zero.requires_grad = False
+        
     def forward(self, batch):
         preds, max_sim = self.model(batch)
         hs, hf, prob, is_rc, has_redundant_fault = preds
@@ -51,11 +53,24 @@ class ModelWithLoss(torch.nn.Module):
         func_loss = self.reg_loss(emb_dis_z.to(self.device), tt_dis_z.to(self.device))
         #------------------------------Task 3: Function Prediction endin----------------------------------
         
-        #------------------------------Task 4: Redundant Fault Prediction begin---------------------------
-        redundant_loss = self.reg_loss(has_redundant_fault.to(self.device), batch.has_redundant_fault.to(self.device))
+        #------------------------------Task 4: Redundant Fault Prediction begin--------------------------
+        # if len(batch.has_redundant_fault) > 0: 
+        #     selected_elements = has_redundant_fault[batch.has_redundant_fault.to(torch.long)].to(self.device)
+        #     redundant_loss = torch.sum(torch.norm(selected_elements - torch.ones_like(selected_elements)))/ selected_elements.size(0)
+        # else:
+        #     redundant_loss = self.zero
+        # print(has_redundant_fault[0])
+        # print(batch.has_redundant_fault[0])
+        weights = torch.zeros_like(batch.has_redundant_fault).float().cuda()
+        weights = torch.fill_(weights,0.0000)
+        weights[batch.has_redundant_fault == [0.0,1.0]] = 1.0
+    
+        redundant_loss = nn.BCELoss(weight=weights.to(self.device))(has_redundant_fault.to(self.device),batch.has_redundant_fault.to(self.device),)
+        # print(redundant_loss)
         #------------------------------Task 4: Redundant Fault Prediction endin---------------------------
         
         loss_stats = {'LProb': prob_loss, 'LRC': rc_loss, 'LFunc': func_loss, "LRFault": redundant_loss}
+        
         return hs, hf, has_redundant_fault, loss_stats
 
 class MLPGNNTrainer(object):
@@ -101,7 +116,8 @@ class MLPGNNTrainer(object):
         args = self.args
         results = {}
         acc_func_list = []
-        acc_redundant_list = []
+        precision_redundant_list = []
+        recall_redundant_list = []
         data_time, batch_time = AverageMeter(), AverageMeter()
         avg_loss_stats = {l: AverageMeter() for l in self.loss_stats}
         num_iters = len(dataset) if args.num_iters < 0 else args.num_iters
@@ -156,7 +172,8 @@ class MLPGNNTrainer(object):
                     Bar.suffix = Bar.suffix + '\033[1;31;42m |Precision_redundant {:}%%\033[0m'.format(precision*100)
                     Bar.suffix = Bar.suffix + '\033[1;31;42m |Recall_redundant {:}%%\033[0m'.format(recall*100)
                     acc_func_list.append(acc_func)
-                    acc_redundant_list.append([precision,recall])
+                    recall_redundant_list.append(recall)
+                    precision_redundant_list.append(precision)
                 if args.print_iter > 0:
                     if iter_id % args.print_iter == 0:
                         print('{}/{}| {}\033[0m'.format(args.task, args.exp_id, Bar.suffix))
@@ -172,6 +189,8 @@ class MLPGNNTrainer(object):
             ret['time'] = bar.elapsed_td.total_seconds() / 60.
             if phase == '  val':
                 ret['ACC'] = np.average(acc_func)
+                ret['Precision_redundant'] =  np.average(precision_redundant_list)
+                ret['Recall_redundant'] =  np.average(recall_redundant_list)
         return ret, results
 
     def debug(self, batch, output, iter_id):

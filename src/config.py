@@ -20,7 +20,7 @@ def get_parse_args():
     #--------------------------------------------system setting begin--------------------------------------------
     parser.add_argument('--gpus', default='-1', 
                         help='-1 for CPU, use comma for multiple gpus')
-    parser.add_argument('--random_seed', type=int, default=208, 
+    parser.add_argument('--random_seed', type=int, default=3411, 
                         help='random seed')
     parser.add_argument("--local_rank", default=0, type=int)
     parser.add_argument('--num_workers', type=int, default=0,
@@ -92,7 +92,7 @@ def get_parse_args():
                         type=int, help='the dimension of node features')
     parser.add_argument('--aggr_function', default='tfmlp', type=str, choices=['deepset', 'aggnconv', 'gated_sum', 'conv_sum', 'mlp', 'attnmlp', 'tfmlp'],
                         help='the aggregation function to use.')
-    parser.add_argument('--disable_encode', action='store_true', default=False)
+    parser.add_argument('--disable_encode', action='store_true', default=True)
     #--------------------------------------------model setting endin-------------------------------------
     
     #--------------------------------------------train and val begin-------------------------------------
@@ -102,7 +102,7 @@ def get_parse_args():
                         help='drop learning rate by 10.')
     parser.add_argument('--weight_decay', type=float, default=1e-10, 
                         help='weight decay (default: 1e-10)')
-    parser.add_argument('--num_epochs', type=int, default=20,
+    parser.add_argument('--num_epochs', type=int, default=100,
                         help='total training epochs.')
     parser.add_argument('--num_iters', type=int, default=-1,
                         help='default: #samples / batch_size.')
@@ -129,7 +129,7 @@ def get_parse_args():
     parser.add_argument('--Prob_weight', type=float, default=5)
     parser.add_argument('--RC_weight', type=float, default=3)
     parser.add_argument('--Func_weight', type=float, default=1)      
-    parser.add_argument('--Redundant_weight', type=float, default=1)    
+    parser.add_argument('--Redundant_weight', type=float, default=10)    
     #-----------------------------------------loss weight settings endin------------------------------------
     
     #-----------------------------------------log settings begin------------------------------------

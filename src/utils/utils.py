@@ -151,15 +151,33 @@ def get_function_acc(g, node_emb):
         return acc
     return -1
 def get_Redundant_class_acc(has_redundant_fault, has_redundant_fault_pre):
-    has_redundant_fault_pre = [1 if x > 0.5 else 0 for x in has_redundant_fault_pre]
-    TP = sum((x==1 and y==1)  for x, y in zip(has_redundant_fault, has_redundant_fault_pre))
-    TN = sum((x==0 and y==1)  for x, y in zip(has_redundant_fault, has_redundant_fault_pre))
-    FP = sum((x==1 and y==0)  for x, y in zip(has_redundant_fault, has_redundant_fault_pre))
-    FN = sum((x==0 and y==0)  for x, y in zip(has_redundant_fault, has_redundant_fault_pre))
-    precision = float(TP) /(float(TP) + float(FP))
-    recall = float(TP) /(float(TP) + float(FN))
-    print("\n")
-    print(TP,TN,FP,FN)
+    TP = 0
+    TN = 0
+    FP = 0
+    FN = 0
+    for idx, is_UR in enumerate(has_redundant_fault_pre):
+        if has_redundant_fault[idx][1]>=0.99:
+            if is_UR[1] >= is_UR[0] :
+                TP=TP+1
+            else:
+                FN=FN+1
+        else:
+            if is_UR[1] >= is_UR[0] :
+                FP=FP+1
+            else:
+                TN=TN+1
+    print('\n')
+    print("TP:",TP,"TN:",TN,"FP:",FP,"FN:",FN)
+    if float(TP) + float(FP) > 0:
+        precision = float(TP) /(float(TP) + float(FP))
+    else:
+        precision = 0.0
+        
+    if (float(TP) + float(FN)) > 0:
+        recall = float(TP) /(float(TP) + float(FN))
+    else:
+        recall = 0.0
+   
     return precision,recall
 def generate_orthogonal_vectors(n, dim):
     # Generate an initial random vector
@@ -171,11 +189,17 @@ def generate_orthogonal_vectors(n, dim):
     for i in range(n-1):
         # Generate a random vector
         v = np.random.randn(dim)
-
         # Project the vector onto the subspace spanned by the previous vectors
         for j in range(i+1):
             v -= np.dot(v, vectors[j]) * vectors[j]
-
+            
+        while(np.linalg.norm(v)==0):
+            print("warming,777")
+            v = np.random.randn(dim)
+            for j in range(i+1):
+                v -= np.dot(v, vectors[j]) * vectors[j]
+                
+        assert(np.linalg.norm(v)!=0)
         # Normalize the vector
         v /= np.linalg.norm(v)
 

@@ -5,9 +5,9 @@ import torch
 import shutil
 import os
 import copy
+import numpy as np
 from torch_geometric.data import Data
 from torch_geometric.data import InMemoryDataset
-
 from utils.data_utils import read_npz_file
 from .load_data import parse_pyg_mlpgate
 
@@ -91,7 +91,18 @@ class MLPGateDataset(InMemoryDataset):
             min_tt_dis = labels[cir_name]['min_tt_dis']
             tt_pair_index = labels[cir_name]['tt_pair_index']
             prob = labels[cir_name]['prob']
-            has_redundant_fault = labels[cir_name]['has_redundant_fault']
+            # has_redundant_fault = []
+            # for idx,is_UR in enumerate(labels[cir_name]['has_redundant_fault']):
+            #     if np.squeeze(is_UR) > 0.99:
+            #         has_redundant_fault.append(idx)
+            # print(len(has_redundant_fault))
+            # if len(has_redundant_fault)==0:
+            #     print('No Redundant fault: ', cir_name)
+            #     continue
+            has_redundant_fault = [[1.0,0.0] if label<=0.1 else [0.0,1.0] for label in np.squeeze(labels[cir_name]['has_redundant_fault'])]
+            if [0.0,1.0] not in has_redundant_fault :
+                print('No Redundant fault: ', cir_name)
+                continue
             
             if self.args.no_rc:
                 rc_pair_index = [[0, 1]]

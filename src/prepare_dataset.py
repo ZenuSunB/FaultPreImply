@@ -21,20 +21,20 @@ import utils.utils as utils
 
 
 data_folds = [ \
-            ['/home/zenu/code/FaultPreImply/data/data_raw/data_iscas89/bench','/home/zenu/code/FaultPreImply/data/data_raw/data_iscas89/fault_mesg']\
-            ,['/home/zenu/code/FaultPreImply/data/data_raw/data_iscas85/bench','/home/zenu/code/FaultPreImply/data/data_raw/data_iscas85/fault_mesg']\
-            ,['/home/zenu/code/FaultPreImply/data/data_raw/data_itc99/bench',  '/home/zenu/code/FaultPreImply/data/data_raw/data_itc99/fault_mesg']\
-            ,['/home/zenu/code/FaultPreImply/data/data_raw/data_epfl/bench',   '/home/zenu/code/FaultPreImply/data/data_raw/data_epfl/fault_mesg']\
+            ['/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_iscas89/bench','/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_iscas89/fault_mesg']\
+            ,['/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_iscas85/bench','/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_iscas85/fault_mesg']\
+            ,['/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_itc99/bench',  '/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_itc99/fault_mesg']\
+            ,['/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_epfl/bench',   '/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_epfl/fault_mesg']\
             ]
 
 data_folds_test = [ \
-                    # ['/home/zenu/code/FaultPreImply/data/data_raw/data_iscas85/bench','/home/zenu/code/FaultPreImply/data/data_raw/data_iscas85/fault_mesg']\
-                    ['/home/zenu/code/FaultPreImply/data/data_raw/data_test1/bench','/home/zenu/code/FaultPreImply/data/data_raw/data_test1/fault_mesg']\
-                    ,['/home/zenu/code/FaultPreImply/data/data_raw/data_test2/bench','/home/zenu/code/FaultPreImply/data/data_raw/data_test2/fault_mesg']\
+                    # ['/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_iscas85/bench','/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_iscas85/fault_mesg']\
+                    ['/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_test1/bench','/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_test1/fault_mesg']\
+                    ,['/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_test2/bench','/home/wangyonghao/workspace/FaultPreImply/data/data_raw/data_test2/fault_mesg']\
                     ]
 NO_PATTERNS = 15000
 
-gate_to_index = {'INPUT': 0, 'AND': 1, 'NOT': 2}
+gate_to_index = {'INPUT': 0, 'AND': 1, 'NOT': 2,'BUFFER':3}
 MIN_LEVEL = 3
 MIN_PI_SIZE = 4
 MAX_INCLUDE = 1.5
@@ -45,7 +45,7 @@ MIDDLE_DIST_IGNORE = [0.2, 0.8]
 
 def get_parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--exp_id', default='train')
+    parser.add_argument('--exp_id', default='test')
     parser.add_argument('--start_idx', default=0, type=int)
     parser.add_argument('--end_idx', default=10000, type=int)
     parser.add_argument('--aig_folder', default='./data/test')
@@ -126,8 +126,8 @@ def parse_fault_mesg(bench_filename):
     circuit2fault_mesg = dict()
     bench_filename_list = bench_filename.split('/')
     bench_filename_list[-2] = 'fault_mesg'
-    bench_filename_list[-1] = '_'.join(bench_filename_list[-1].split('_')[:-1])
-    bench_filename_list[-1] = bench_filename_list[-1]+'_wire2fault[after.tmax.flist].label'
+    bench_filename_list[-1] = '_'.join(bench_filename_list[-1].split('_')[:-3])
+    bench_filename_list[-1] = bench_filename_list[-1]+'_wire2fault_add_buffer[after.tmax.flist].label'
     fault_mesg_filename = '/'.join(bench_filename_list)
     is_wire_line = True
     wire2fault_mesg = ""
@@ -166,7 +166,8 @@ if __name__ == '__main__':
     cir_idx = 0
     tot_nodes = 0
     tot_pairs = 0
-    for data_path,fault_mesg_path in data_folds :
+    folds = data_folds if args.exp_id == 'train' else data_folds_test
+    for data_path,fault_mesg_path in folds :
         name_list = []
         aig_folder = data_path
         print('[INFO] Read bench from: ', aig_folder)
@@ -180,13 +181,10 @@ if __name__ == '__main__':
             # print(bench_name,simple_circuit_name)
             #-------------------------------parse circuir netlist#-------------------------------
             x_data_old_name, edge_index, fanin_list, fanout_list, level_list = circuit_utils.parse_bench_with_old_name(bench_filename, gate_to_index)
-            # print(x_data_old_name)
-            # print(simple_circuit_name)
             circuit2fault_mesg = parse_fault_mesg(bench_filename)
-            
             #-------------------------------redundant fault mesg #-------------------------------
             has_redundant_fault = get_redundant_mesg(x_data_old_name,circuit2fault_mesg)
-            # print(has_redundant_fault)
+            print("redundant ratio : ",np.sum(has_redundant_fault)/len(has_redundant_fault))
             #-------------------------------rename node to idx #-------------------------------
             x_data = utils.rename_node(x_data_old_name)
             
@@ -200,7 +198,6 @@ if __name__ == '__main__':
             y = [0] * len(x_data)
             for idx in range(len(x_data)):
                 y[idx] = np.sum(tt[idx]) / len(tt[idx])
-                
             #-------------------------------Get Pair #-------------------------------
             tt_pair_index, tt_dis, min_tt_dis = gen_tt_pair(x_data, fanin_list, fanout_list, level_list, y)
             end_time = time.time()

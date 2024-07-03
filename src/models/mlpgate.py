@@ -80,7 +80,7 @@ class MLPGate(nn.Module):
 
         #-------------------------------------Readout begin-------------------------------------
         self.readout_prob = MLP(self.dim_hidden, args.dim_mlp, 1, num_layer=3, p_drop=0.2, norm_layer='batchnorm', act_layer='relu')
-        self.readout_redundant = MLP(self.dim_hidden, args.dim_mlp, 1, num_layer=3, p_drop=0.2, norm_layer='batchnorm', act_layer='relu')
+        self.readout_redundant = MLP(self.dim_hidden, args.dim_mlp, 2, num_layer=3, p_drop=0.2, norm_layer=None, act_layer='relu', sigmoid=True)
         self.readout_rc = MLP(self.dim_hidden * 2, args.dim_mlp, 1, num_layer=3, p_drop=0.2, norm_layer='batchnorm', sigmoid=True)
         #-------------------------------------Readout endin-------------------------------------
 
@@ -256,7 +256,7 @@ class MLPGate2(nn.Module):
 
         #-------------------------------------Readout begin-------------------------------------
         self.readout_prob = MLP(self.dim_hidden, args.dim_mlp, 1, num_layer=3, p_drop=0.2, norm_layer='batchnorm', act_layer='relu')
-        self.readout_redundant = MLP(self.dim_hidden, args.dim_mlp, 1, num_layer=3, p_drop=0.2, norm_layer='batchnorm', act_layer='relu')
+        self.readout_redundant = MLP(self.dim_hidden, args.dim_mlp, 2, num_layer=3, p_drop=0.2, norm_layer=None, act_layer='relu', sigmoid=True)
         self.readout_rc = MLP(self.dim_hidden * 2, args.dim_mlp, 1, num_layer=3, p_drop=0.2, norm_layer='batchnorm', sigmoid=True)
         #-------------------------------------Readout endin-------------------------------------
 

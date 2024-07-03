@@ -57,7 +57,12 @@ def logic(gate_type, signals, gate_to_index):
                 return 0
             else:
                 return 1
-
+    elif 'BUFFER' in gate_to_index.keys() and gate_type == gate_to_index['BUFFER']:  # NOT
+        for s in signals:
+            if s == 1:
+                return 1
+            else:
+                return 0
     elif 'XOR' in gate_to_index.keys() and gate_type == gate_to_index['XOR']:  # XOR
         z_count = 0
         o_count = 0
@@ -982,13 +987,13 @@ def feature_gen_connect(data, gate_to_index):
             node_name = node_name.replace(' ','')            
             new_node(name2idx, x_data, node_name, get_gate_type('INPUT', gate_to_index))
         elif 'AND(' in line or 'NAND(' in line or 'OR(' in line or 'NOR(' in line \
-                or 'NOT(' in line or 'XOR(' in line or 'BUF(' in line:
+                or 'NOT(' in line or 'XOR(' in line or 'BUF(' in line or 'BUFFER(' in line:
             node_name = line.split(':')[-1].split('=')[0].replace(' ', '')
             gate_type = line.split('=')[-1].split('(')[0].replace(' ', '')
             new_node(name2idx, x_data, node_name, get_gate_type(gate_type, gate_to_index))
     for line_idx, line in enumerate(data):
         if 'AND(' in line or 'NAND(' in line or 'OR(' in line or 'NOR(' in line \
-                or 'NOT(' in line or 'XOR(' in line or 'BUF(' in line:
+                or 'NOT(' in line or 'XOR(' in line or 'BUF(' in line or 'BUFFER(' in line:
             node_name = line.split(':')[-1].split('=')[0].replace(' ', '')
             gate_type = line.split('=')[-1].split('(')[0].replace(' ', '')
             src_list = line.split('(')[-1].split(')')[0].replace(' ', '').split(',')
@@ -996,7 +1001,6 @@ def feature_gen_connect(data, gate_to_index):
             for src_node in src_list:
                 src_node_idx = name2idx[src_node]
                 edge_index_data.append([src_node_idx, dst_idx])
-    
     return x_data, edge_index_data
 
 def feature_gen_level(x_data, fanout_list, gate_to_index={'GND': 999, 'VDD': 999}):
@@ -1051,7 +1055,7 @@ def parse_bench(file, gate_to_index={'INPUT': 0, 'AND': 1, 'NOT': 2}, MAX_LENGTH
     
     return data, edge_data, fanin_list, fanout_list, level_list
 
-def parse_bench_with_old_name(file, gate_to_index={'INPUT': 0, 'AND': 1, 'NOT': 2}, MAX_LENGTH=-1):
+def parse_bench_with_old_name(file, gate_to_index={'INPUT': 0, 'AND': 1, 'NOT': 2, 'BUFFER':3}, MAX_LENGTH=-1):
     data = read_file(file)
     data, num_nodes, _ = add_node_index(data)
     if MAX_LENGTH > 0 and num_nodes > MAX_LENGTH:
